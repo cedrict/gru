@@ -7,7 +7,7 @@ print(' GGGGG  RRRR   U   U')
 print(' G      R   R  U   U')
 print(' G  GG  RRRR   U   U')
 print(' G   G  R   R  U   U')
-print(' GGGGG  R   R  UUUUU  1.0')
+print(' GGGGG  R   R  UUUUU  0.1')
 print('******************************************')
 
 
@@ -17,9 +17,9 @@ nely = 16              # number of elements in horizontal direction
     
 nmarker_per_dim=6
 
-Tmin=500
-Tmax=600
-dtemp=10  
+Tmin=600
+Tmax=700
+dtemp=100  
 temp=np.arange(Tmin,Tmax,dtemp)
 
 # kinetics of grain size reduction (0.75 works fine). Smaller-> slower grain size reduction

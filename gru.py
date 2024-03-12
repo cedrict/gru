@@ -22,15 +22,15 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     CFL_nb=0.25
 
     #usefull parameters
-    background_temperature=tempdegC+Tkelvin 
-    background_grainsize=1000 # initial grain size in microns
+    background_T=tempdegC+Tkelvin 
+    background_gs=1000 # initial grain size in microns
 
     #markers parameters
     avrg=3
 
     #nonlinear iterations parameters
     niter=10
-    tol=1e-3
+    tol=1e-4
 
     # processing input    
     v0=sr*Ly                             # bc velocity so that shear strain rate is the imposed strain rate sr
@@ -252,7 +252,7 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     swarm_total_strainxy=np.zeros(nmarker,dtype=np.float64)     # strain yy
     swarm_total_strainyy=np.zeros(nmarker,dtype=np.float64)     # strain xy
     swarm_total_strain_eff=np.zeros(nmarker,dtype=np.float64)   # effective strain 
-    swarm_grainsize=np.zeros(nmarker,dtype=np.float64)          # grain size 
+    swarm_gs=np.zeros(nmarker,dtype=np.float64)          # grain size 
     swarm_tauxx=np.zeros(nmarker,dtype=np.float64)              # dev stress xx
     swarm_tauxy=np.zeros(nmarker,dtype=np.float64)              # dev stress yy
     swarm_tauyy=np.zeros(nmarker,dtype=np.float64)              # dev stress xy
@@ -267,6 +267,10 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     swarm_sigma_angle=np.zeros(nmarker,dtype=np.float64)        # principal angle  
     swarm_sigma1=np.zeros(nmarker,dtype=np.float64)             # principal stress
     swarm_sigma2=np.zeros(nmarker,dtype=np.float64)             # principal stress 
+    swarm_sr_dis=np.zeros(nmarker,dtype=np.float64)             # strain rate 
+    swarm_sr_diff=np.zeros(nmarker,dtype=np.float64)            # strain rate 
+    swarm_sr_gbs=np.zeros(nmarker,dtype=np.float64)             # strain rate 
+    swarm_sr_lowT=np.zeros(nmarker,dtype=np.float64)            # strain rate 
     
     counter=0
     for iel in range(0,nel):
@@ -294,18 +298,18 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     logfile.write("swarm setup: %.3f s \n" % (time.time() - start))
     
     #################################################################
-    # assign material id to markers 
+    # assign material id and gs to markers 
     #################################################################
     start = time.time()
     
     for im in range (0,nmarker):
         swarm_mat[im]=1
-        swarm_grainsize[im]=random.gauss(background_grainsize,0.1*background_grainsize)  # initial grain size 
+        swarm_gs[im]=random.gauss(background_gs,0.1*background_gs)  # initial grain size 
         xxi=swarm_x[im]-Lx/2
         yyi=swarm_y[im]-Ly/2
         if xxi**2/radius**2+yyi**2/radius**2<1: swarm_mat[im]=2
         if swarm_y[im]<1/6*Ly or swarm_y[im]>5/6*Ly: 
-            swarm_grainsize[im]=background_grainsize
+            swarm_gs[im]=background_gs
             swarm_mat[im]=3
     
     logfile.write("assigning mat to swarm: %.3f s\n" % (time.time() - start))
@@ -397,14 +401,14 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                 nodal_counter[iconP[1,iel]]+=N2
                 nodal_counter[iconP[2,iel]]+=N3
                 nodal_counter[iconP[3,iel]]+=N4
-                #compute viscosity on marker
+                #compute visc on marker
                 NNNV[0:mV]=NNV(swarm_r[im],swarm_s[im])
                 swarm_exx[im]=sum(NNNV[0:mV]*exx[iconV[0:mV,iel]])
                 swarm_eyy[im]=sum(NNNV[0:mV]*eyy[iconV[0:mV,iel]])
                 swarm_exy[im]=sum(NNNV[0:mV]*exy[iconV[0:mV,iel]])
                 swarm_ee[im]=np.sqrt(0.5*(swarm_exx[im]**2+swarm_eyy[im]**2+2*swarm_exy[im]**2) ) 
-                swarm_eta[im],swarm_grainsize[im]=viscosity(swarm_x[im],swarm_y[im],swarm_ee[im],\
-                                                  background_temperature,swarm_mat[im],swarm_grainsize[im],egs)
+                swarm_eta[im],swarm_gs[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
+                =viscosity(swarm_x[im],swarm_y[im],swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im],egs)
     
                 if abs(avrg)==1 : # arithmetic
                    eta_elemental[iel]     +=swarm_eta[im]
@@ -759,9 +763,9 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
             #update its position
             swarm_x[im]+=um*dt
             swarm_y[im]+=vm*dt
-            #assign effective viscosity
-            swarm_eta[im],swarm_grainsize[im]=viscosity(swarm_x[im],swarm_y[im],swarm_ee[im],
-                                              background_temperature,swarm_mat[im],swarm_grainsize[im],egs)
+            #assign effective visc
+            swarm_eta[im],swarm_gs[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
+            =viscosity(swarm_x[im],swarm_y[im],swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im],egs)
             #assign pressure
             swarm_p_dyn[im]=NNNP.dot(p[iconP[0:mP,iel]])
  
@@ -829,7 +833,7 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                           swarm_eta,\
                           swarm_tau_eff,\
                           swarm_ee,\
-                          swarm_grainsize)
+                          swarm_gs)
 
         logfile.write("     write_history: %.3f s \n" % (time.time() - start))
 
@@ -969,7 +973,27 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
             #--
             vtufile.write("<DataArray type='Float32' Name='grain size (microns)' Format='ascii'>\n")
             for i in range(0,nmarker):
-                vtufile.write("%3e \n" % swarm_grainsize[i] )
+                vtufile.write("%3e \n" % swarm_gs[i] )
+            vtufile.write("</DataArray>\n")
+            #--
+            vtufile.write("<DataArray type='Float32' Name='sr (dis)' Format='ascii'>\n")
+            for i in range(0,nmarker):
+                vtufile.write("%3e \n" % swarm_sr_dis[i] )
+            vtufile.write("</DataArray>\n")
+            #--
+            vtufile.write("<DataArray type='Float32' Name='sr (diff)' Format='ascii'>\n")
+            for i in range(0,nmarker):
+                vtufile.write("%3e \n" % swarm_sr_diff[i] )
+            vtufile.write("</DataArray>\n")
+            #--
+            vtufile.write("<DataArray type='Float32' Name='sr (gbs)' Format='ascii'>\n")
+            for i in range(0,nmarker):
+                vtufile.write("%3e \n" % swarm_sr_gbs[i] )
+            vtufile.write("</DataArray>\n")
+            #--
+            vtufile.write("<DataArray type='Float32' Name='sr (lowT)' Format='ascii'>\n")
+            for i in range(0,nmarker):
+                vtufile.write("%3e \n" % swarm_sr_lowT[i] )
             vtufile.write("</DataArray>\n")
             #--
             vtufile.write("<DataArray type='Float32' Name='strain rate (xx)' Format='ascii'>\n")
