@@ -13,7 +13,9 @@ print('******************************************')
 
 sr=1e-15
 
-nely = 12              # number of elements in horizontal direction
+nely = 16              # number of elements in horizontal direction
+    
+nmarker_per_dim=6
 
 Tmin=500
 Tmax=600
@@ -25,7 +27,7 @@ egs=0.75
 
 for i in range(len(temp)):
     start = time.time()
-    gru.stonerheo(sr,temp[i],nely,egs)
+    gru.stonerheo(sr,temp[i],nely,egs,nmarker_per_dim)
     end = time.time()
     print('-->Temp=',temp[i],'C | time=',end-start)
 

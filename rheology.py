@@ -9,22 +9,12 @@ import scipy.optimize as optimize   # FG for Newton Raphson
 ##################################################################
 
 def f(x,sr,gs,T):
-    sr_dis=Adis*np.exp(-Edis/(Rgas*(T+273)))*x**ndis
-    sr_diff=Adiff*np.exp(-Ediff/(Rgas*(T+273)))* x**ndiff * gs**(-mdiff)
-    sr_gbs=Agbs*np.exp(-Egbs/(Rgas*(T+273)))* x**ngbs * gs**(-mgbs)
+    sr_dis=Adis*np.exp(-Edis/(Rgas*T))*x**ndis
+    sr_diff=Adiff*np.exp(-Ediff/(Rgas*T))* x**ndiff * gs**(-mdiff)
+    sr_gbs=Agbs*np.exp(-Egbs/(Rgas*T))* x**ngbs * gs**(-mgbs)
     sr_lowT=0
-    if T<= TlowT: sr_lowT=AlowT*np.exp(-ElowT/(Rgas*(T+273)) * (1-(x/taulowT)**plowT)**qlowT)
+    if T< TlowT: sr_lowT=AlowT*np.exp(-ElowT/(Rgas*T) *(1-(x/taulowT)**plowT)**qlowT)
     val=sr-sr_dis-sr_diff-sr_gbs-sr_lowT
-    return val
-
-
-def f(x,sr,gs,T):
-    srdis=Adis*np.exp(-Edis/(Rgas*T))*x**ndis
-    srdiff=Adiff*np.exp(-Ediff/(Rgas*T))* x**ndiff * gs**(-mdiff)
-    srgbs=Agbs*np.exp(-Egbs/(Rgas*T))* x**ngbs * gs**(-mgbs)
-    srlowT=0
-    if T< TlowT: srlowT=AlowT*np.exp(-ElowT/(Rgas*T) * (1-(x/taulowT)**plowT)**qlowT)
-    val=sr-srdis-srdiff-srgbs-srlowT
     return val
 
 ##################################################################
@@ -32,33 +22,30 @@ def f(x,sr,gs,T):
 ##################################################################
 
 def compute_sr(x,sr,gs,T):
-    sr_dis=Adis*np.exp(-Edis/(Rgas*(T+273)))*x**ndis
-    sr_diff=Adiff*np.exp(-Ediff/(Rgas*(T+273)))* x**ndiff * gs**(-mdiff)
-    sr_gbs=Agbs*np.exp(-Egbs/(Rgas*(T+273)))* x**ngbs * gs**(-mgbs)
+    sr_dis=Adis*np.exp(-Edis/(Rgas*T))*x**ndis
+    sr_diff=Adiff*np.exp(-Ediff/(Rgas*T))* x**ndiff * gs**(-mdiff)
+    sr_gbs=Agbs*np.exp(-Egbs/(Rgas*T))* x**ngbs * gs**(-mgbs)
     sr_lowT=0.
-    if T<= TlowT:sr_lowT=AlowT*np.exp(-ElowT/(Rgas*(T+273)) * (1-(x/taulowT)**plowT)**qlowT)
-    return sr_dis,sr_diff,sr_gbs,sr_lowT
-
-
-def compute_sr(x,sr,gs,T):
-    sr_dis=Adis*np.exp(-Edis/(Rgas*(T+273)))*x**ndis
-    sr_diff=Adiff*np.exp(-Ediff/(Rgas*(T+273)))* x**ndiff * gs**(-mdiff)
-    sr_gbs=Agbs*np.exp(-Egbs/(Rgas*(T+273)))* x**ngbs * gs**(-mgbs)
-    sr_lowT=0.
-    if T< TlowT:sr_lowT=AlowT*np.exp(-ElowT/(Rgas*(T+273)) * (1-(x/taulowT)**plowT)**qlowT)
+    if T< TlowT:sr_lowT=AlowT*np.exp(-ElowT/(Rgas*T) *(1-(x/taulowT)**plowT)**qlowT)
     return sr_dis,sr_diff,sr_gbs,sr_lowT
 
 #------------------------------------------------------------------------------
-def viscosity(x,y,ee,T,imat,grainsize,egs):  # add grainsize as argument in viscosity FG
-        # FG use experiment 1 for grain size rheology
+def viscosity(x,y,ee,T,imat,grainsize,egs):  
+
         sr=max(1e-19,ee) # minimum strain rate
         gs=max(grainsize,20) # minimum grain size
+
         sigdis=(sr/Adis)**(1/ndis) * np.exp(Edis/ (ndis*Rgas*T))
+
         sigdiff=(sr/Adiff)**(1/ndiff) * gs**(mdiff/ndiff) * np.exp(Ediff/(ndiff*Rgas*T))
         siggbs=(sr/Agbs)**(1/ngbs) * gs**(mgbs/ngbs) * np.exp(Egbs / (ngbs*Rgas*T))
+
         siglowT=taulowT*(1-(-Rgas*T/ElowT * np.log(sr/AlowT))**(1/qlowT))**(1/plowT)
+
         sig=min(sigdis,sigdiff,siggbs)
+
         #print("gs, sigdis/gbs "+str(gs)+" "+str(sigdis)+" "+str(siggbs))
+
         if T<TlowT: sig=min(sigdis,sigdiff,siggbs,siglowT)
         # NewtonRaphson Loop
         taunr = optimize.newton(f,sig,args=(sr,gs,T),tol=1e-3, maxiter=20,fprime=None,fprime2=None)

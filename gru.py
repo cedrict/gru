@@ -11,7 +11,7 @@ from common import *
 from rheology import *
 from write_history import *
 
-def stonerheo(sr,tempdegC,nely,egs):
+def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     
     Lx=1*cm                # horizontal extent of the domain in m 
     Ly=1*cm                # vertical extent of the domain 
@@ -26,7 +26,6 @@ def stonerheo(sr,tempdegC,nely,egs):
     background_grainsize=1000 # initial grain size in microns
 
     #markers parameters
-    nmarker_per_dim=5
     avrg=3
 
     #nonlinear iterations parameters
