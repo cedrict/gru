@@ -17,17 +17,18 @@
 
 
 
-\title{GRU}
+\title{{\Large \bf GRU} \\ (Geodynamical Rheology Upscaling)}
 \author{C. Thieulot \& F. Gueydan}
 
 \begin{document}
 \maketitle
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Mass and momentum conservation equations}
 
+we start from the mass and momentum conservation equations.
+Since our domain is very small gravitational forces are neglected.
 
 \begin{eqnarray}
 \vec\nabla \cdot \bm \sigma + \rho \vec{g} &=& \vec{0} \\
@@ -46,7 +47,7 @@ written as
 \]
 where $\eta$ is the viscosity, $\vec{\upnu}=(u,v)$ is the velocity vector, 
 and $\dot{\bm \varepsilon}(\vec\upnu)$ is the (deviatoric) 
-strain rate tensor.
+strain rate tensor (we assume incompressible flow).
 
 Putting it all together we obtain:
 \begin{eqnarray}
@@ -114,13 +115,14 @@ temperature $T$ and the grain size $d$ of each marker computes the
 effective viscosity (see Section~\ref{sec:visc}).
 
 This viscosity is then averaged inside the element and is used to build
-the elemental matrix $K_\eta$.
+the elemental matrix $K_\eta$. Note that the averaging can be arithmetic,
+geometric or harmonic (default).
 
 The FE matrix is assembled using \lstinline{lil_matrix},
 converted to CSR format and then passed to a direct solver alongside the rhs vector.
 Node that the code is based on the codes available in the educational Fieldstone project
+\footnote{https://cedrict.github.io/}
 and is therefore not optimised for performance.
-
 
 
 Following a standard approach, the discretised Stokes equations yield
@@ -154,8 +156,28 @@ and $\vec{\cal P}$ is the vector containing all pressure degrees of freedom
 
 
 
-After the FE matrix has been built, the linear system is solved, and the 
-nodal velocity is used to advect the markers. 
+After the FE matrix has been built, the linear system is solved, and 
+we have obtained a new velocity and pressure field.
+
+We then proceed to compute the strain rate components on the nodes.
+Since a given node belongs to more than one element the nodal values 
+are averages of the corner values of neighbouring elements.
+The nodal effective strain rate is then computed as follows:
+\[
+\dot\varepsilon_e = \sqrt{\frac12 (
+\dot\varepsilon_{xx}^2+
+\dot\varepsilon_{yy}^2)+
+\dot\varepsilon_{xy}^2
+)} 
+\]
+
+Because the effective viscosity of each marker (and therefore each element)
+depends on the strain rate, we carry out simple Picard nonlinear iterations 
+which stop when the 2-norm of the relative change of the velocity field between two consecutive 
+iterations is less than a set tolerance of $10^{-4}$.
+
+
+The nodal velocity is used to advect the markers. 
 For simplicity we resort to an Euler step, i.e.
 \[
 \vec{\text x}_i(t+\delta t) = \vec{\text x}_i(t) + \vec\upnu_i \; \delta t
@@ -175,13 +197,11 @@ In the middle of the domain random noise is added as shown in Fig.YYY
 \begin{center}
 INSERT fig of initial d
 \end{center}
+It is a gaussian distribution with a prescribed standard deviation of 10\%
+of the initial background grain size.
 The grain size value carried by each marker is evolved according the 
 equation presented in Section~\ref{seq:gsev}.
 
-Because the effective viscosity of each marker (and therefore each element)
-depends on the strain rate, we carry out simple Picard nonlinear iterations 
-which stop when the 2-norm of the relative change of the velocity field between two consecutive 
-iterations is less than a set tolerance of $10^{-4}$.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -206,7 +226,7 @@ where $d$ is the grain size, $m$ is the grain size exponent, $\tau_p$ is the Pei
 for low-temperature plasticity.
 
 
-As explained in Section~\ref{MMM-ss:srpart}, there is one major problem with the equations above:
+There is one major problem with the equations above:
 Assuming $\dot\varepsilon$ and temperature $T$ known (as well as all the material parameters $A$, $Q$, $n$, ...),
 and that the deformation mechanisms are in series and subjected to the same deviatoric stress $\tau$,
 we must find $\tau$ such that
@@ -216,7 +236,7 @@ we must find $\tau$ such that
 \]
 Unfortunately, this equation is non-linear in $\tau$ so that finding its zero(es) is not
 straightforward. A Newton-Raphson\footnote{\url{https://en.wikipedia.org/wiki/Newton's_method}}
-algorithm is then used. How to build such an algorithm is presented in Section~\ref{MMM-ss:srpart}
+algorithm is then used. How to build such an algorithm is presented in Section~2.27.22 of FieldStone
 but we will here use an existing python function.
 We load \lstinline{scipy.optimize} module and use the \lstinline{newton} function\footnote{\url{
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.newton.html}}
@@ -224,14 +244,6 @@ which finds a zero of a real or complex function using the Newton-Raphson (or se
 Once $\tau$ (\lstinline{tau_NR}) has been found, it can then be inserted in the strain rate equations above and
 the strain rate partitioning is then complete.
 
-Note that the $\dot\varepsilon_e$ is the effective strain rate defined as 
-\[
-\dot\varepsilon_e = \sqrt{\frac12 (
-\dot\varepsilon_{xx}^2+
-\dot\varepsilon_{yy}^2)+
-\dot\varepsilon_{xy}^2
-)} 
-\]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Grain size evolution \label{seq:gsev}}
@@ -254,6 +266,20 @@ by the field boundary hypothesis
 
 FG: Please clean this 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{shear heating}
+
+For incompressible materials, and neglecting diffusion and advection processes, the energy equation is then
+\[
+\rho C_p \frac{\partial T}{\partial t} = 2 \eta \dot{\bm \varepsilon}:\dot{\bm \varepsilon}
+\]
+or, 
+\[
+\frac{\partial T}{\partial t} = \frac{2 \eta}{\rho C_p} (\dot{\varepsilon}_{xx}^2 + \dot{\varepsilon}_{yy}^2 + 2\dot{\varepsilon}_{xy}^2 ) 
+\]
+This means that we can write a simple post-processor that computes for each marker the maximum temperature
+generated by shear heating. Of course in the absence of diffusion this remains an upper bound only meant 
+to provide us with a rough estimate.
 
 
 \newpage

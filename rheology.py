@@ -89,4 +89,13 @@ def viscosity(x,y,ee,T,imat,grainsize,egs):
         etaeff=min(etaeff,1e26)
         etaeff=max(etaeff,1e18)
 
+        etaeff=1e21
+
         return etaeff,grainsize,computed_sr[0],computed_sr[1],computed_sr[2],computed_sr[3] 
+
+###################################################################################################
+
+def gs_evolution(gs,sr):
+
+    return gs
+

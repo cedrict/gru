@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse as sps
 from scipy.sparse import lil_matrix 
-import time as time
+import time 
 import os
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
@@ -10,15 +10,17 @@ from FEbasis import *
 from common import *
 from rheology import *
 from write_history import *
-
-def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     
-    Lx=1*cm                # horizontal extent of the domain in m 
-    Ly=1*cm                # vertical extent of the domain 
-    radius=Lx/8            # for mat 2 (mean value in a small circle)
+###################################################################################################
+
+def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma):
+    
+    Lx=1*cm         # horizontal extent of the domain in m 
+    Ly=1*cm         # vertical extent of the domain 
+    radius=Lx/8     # for mat 2 (mean value in a small circle)
 
     #time stepping
-    nstep=5
+    nstep=100
     CFL_nb=0.25
 
     #usefull parameters
@@ -33,14 +35,15 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     tol=1e-4
 
     # processing input    
-    v0=sr*Ly                             # bc velocity so that shear strain rate is the imposed strain rate sr
+    v0=background_sr*Ly                  # bc velocity so that shear strain rate is the imposed strain rate sr
     nelx = int(nely*Lx/Ly)               # number of elements in vertical direction
     permat2=np.pi*radius**2/(Lx*Ly)*100  # percentage of disc wrt whole domain
+    tfinal=gamma/background_sr           # total time to reach gamma  
 
     ###############################################################################################
     
     output_folder='GrainSize-T-'+str(int(tempdegC))+'Kinetics-'+str(egs)+'/'
-    histfile='Hist-T-'+str(int(tempdegC))+'-Sr-'+str(-int(np.log10(sr)))+'-Kinetics-'+str(egs)+'-PercMat2-'+str(int(permat2))
+    histfile='Hist-T-'+str(int(tempdegC))+'-Sr-'+str(-int(np.log10(background_sr)))+'-Kinetics-'+str(egs)+'-PercMat2-'+str(int(permat2))
     if not os.path.isdir(output_folder): os.mkdir(output_folder)  
     convfile=open(output_folder+'conv.ascii',"w")
     logfile=open(output_folder+'log.ascii',"w")
@@ -58,9 +61,9 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     nnx=2*nelx+1  # number of elements, x direction
     nny=2*nely+1  # number of elements, y direction
     
-    NV=nnx*nny  # number of nodes
-    nel=nelx*nely  # number of elements, total
-    NP=(nelx+1)*(nely+1)
+    NV=nnx*nny           # number of V nodes
+    nel=nelx*nely        # number of elements, total
+    NP=(nelx+1)*(nely+1) # number of P nodes
     
     NfemV=NV*ndofV   # number of velocity dofs
     NfemP=NP*ndofP   # number of pressure dofs
@@ -78,17 +81,14 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     
     #################################################################
     #################################################################
-    #logfile.write("%f %10e %10e %10e\n" %(istep+iter/200,chi_u,chi_v,tol))
     logfile.write("nelx:"+str(nelx)+"\n")
     logfile.write("nely:"+str(nely)+"\n")
     logfile.write("nel: "+str(nel)+"\n")
     logfile.write("nnx: "+str(nnx)+"\n")
     logfile.write("nny: "+str(nny)+"\n")
     logfile.write("NV:  "+str(NV)+"\n")
+    logfile.write("tfinal:"+str(tfinal/year/1e6)+"Myr \n")
     logfile.write("------------------------------\n")
-    
-    rVnodes=[-1,+1,+1,-1, 0,+1, 0,-1,0]
-    sVnodes=[-1,-1,+1,+1,-1,0,+1,0,0]
     
     eta_ref=1e20 # purely numerical parameter - do not change
     
@@ -170,9 +170,6 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     start = time.time()
     
     area=np.zeros(nel,dtype=np.float64) 
-    NNNV=np.zeros(mV,dtype=np.float64)       
-    dNNNVdr=np.zeros(mV,dtype=np.float64)   
-    dNNNVds= np.zeros(mV,dtype=np.float64) 
     
     for iel in range(0,nel):
         for iq in range(0,nqperdim):
@@ -180,9 +177,9 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                 rq=qcoords[iq]
                 sq=qcoords[jq]
                 weightq=qweights[iq]*qweights[jq]
-                NNNV[0:mV]=NNV(rq,sq)
-                dNNNVdr[0:mV]=dNNVdr(rq,sq)
-                dNNNVds[0:mV]=dNNVds(rq,sq)
+                NNNV=NNV(rq,sq)
+                dNNNVdr=dNNVdr(rq,sq)
+                dNNNVds=dNNVds(rq,sq)
                 jcb=np.zeros((2,2),dtype=np.float64)
                 for k in range(0,mV):
                     jcb[0,0] += dNNNVdr[k]*xV[iconV[k,iel]]
@@ -252,14 +249,13 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     swarm_total_strainxy=np.zeros(nmarker,dtype=np.float64)     # strain yy
     swarm_total_strainyy=np.zeros(nmarker,dtype=np.float64)     # strain xy
     swarm_total_strain_eff=np.zeros(nmarker,dtype=np.float64)   # effective strain 
-    swarm_gs=np.zeros(nmarker,dtype=np.float64)          # grain size 
+    swarm_gs=np.zeros(nmarker,dtype=np.float64)                 # grain size 
     swarm_tauxx=np.zeros(nmarker,dtype=np.float64)              # dev stress xx
     swarm_tauxy=np.zeros(nmarker,dtype=np.float64)              # dev stress yy
     swarm_tauyy=np.zeros(nmarker,dtype=np.float64)              # dev stress xy
     swarm_tau_eff=np.zeros(nmarker,dtype=np.float64)            # effective dev stress
     swarm_iel=np.zeros(nmarker,dtype=np.int32)                  # element identity
     swarm_eta=np.zeros(nmarker,dtype=np.float64)                # viscosity
-    swarm_p_dyn=np.zeros(nmarker,dtype=np.float64)              # computed pressure 
     swarm_tau_angle=np.zeros(nmarker,dtype=np.float64)          # principal angle  
     swarm_sigmaxx=np.zeros(nmarker,dtype=np.float64)            # full stress xx
     swarm_sigmaxy=np.zeros(nmarker,dtype=np.float64)            # full stress yy
@@ -346,7 +342,7 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     v   =np.zeros(NV,dtype=np.float64)    
     exx =np.zeros(NV,dtype=np.float64)  
     eyy =np.zeros(NV,dtype=np.float64)  
-    exy =np.zeros(NV,dtype=np.float64)  
+    exy =np.zeros(NV,dtype=np.float64) ; exy[:]=background_sr 
     
     for istep in range(0,nstep):
     
@@ -456,16 +452,19 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
     
             f_rhs   = np.zeros(NfemV,dtype=np.float64)         # right hand side f 
             h_rhs   = np.zeros(NfemP,dtype=np.float64)         # right hand side h 
-            constr  = np.zeros(NfemP,dtype=np.float64)         # constraint matrix/vector
             b_mat   = np.zeros((3,ndofV*mV),dtype=np.float64)  # gradient matrix B 
             N_mat   = np.zeros((3,ndofP*mP),dtype=np.float64)  # matrix  
-            NNNV    = np.zeros(mV,dtype=np.float64)            # shape functions V
-            NNNP    = np.zeros(mP,dtype=np.float64)            # shape functions P
             dNNNVdx = np.zeros(mV,dtype=np.float64)            # shape functions derivatives
             dNNNVdy = np.zeros(mV,dtype=np.float64)            # shape functions derivatives
-            dNNNVdr = np.zeros(mV,dtype=np.float64)            # shape functions derivatives
-            dNNNVds = np.zeros(mV,dtype=np.float64)            # shape functions derivatives
             c_mat   = np.array([[2,0,0],[0,2,0],[0,0,1]],dtype=np.float64) 
+
+            jcb=np.zeros((2,2),dtype=np.float64)
+            jcbi=np.zeros((2,2),dtype=np.float64)
+            jcb[0,0]=hx/2
+            jcb[1,1]=hy/2
+            jcob=jcb[0,0]*jcb[1,1]
+            jcbi[0,0]=2/hx
+            jcbi[1,1]=2/hy
     
             for iel in range(0,nel):
     
@@ -473,7 +472,6 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                 K_el =np.zeros((mV*ndofV,mV*ndofV),dtype=np.float64)
                 G_el=np.zeros((mV*ndofV,mP*ndofP),dtype=np.float64)
                 h_el=np.zeros((mP*ndofP),dtype=np.float64)
-                NNNNP= np.zeros(mP*ndofP,dtype=np.float64)   
     
                 for iq in range(0,nqperdim):
                     for jq in range(0,nqperdim):
@@ -483,27 +481,24 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                         sq=qcoords[jq]
                         weightq=qweights[iq]*qweights[jq]
     
-                        NNNV[0:mV]=NNV(rq,sq)
-                        dNNNVdr[0:mV]=dNNVdr(rq,sq)
-                        dNNNVds[0:mV]=dNNVds(rq,sq)
-                        NNNP[0:mP]=NNP(rq,sq)
+                        NNNV=NNV(rq,sq)
+                        dNNNVdr=dNNVdr(rq,sq)
+                        dNNNVds=dNNVds(rq,sq)
+                        NNNP=NNP(rq,sq)
     
                         # calculate jacobian matrix
-                        jcb=np.zeros((2,2),dtype=np.float64)
-                        for k in range(0,mV):
-                            jcb[0,0] += dNNNVdr[k]*xV[iconV[k,iel]]
-                            jcb[0,1] += dNNNVdr[k]*yV[iconV[k,iel]]
-                            jcb[1,0] += dNNNVds[k]*xV[iconV[k,iel]]
-                            jcb[1,1] += dNNNVds[k]*yV[iconV[k,iel]]
-                        jcob = np.linalg.det(jcb)
-                        jcbi = np.linalg.inv(jcb)
+                        # since elts are rectangles I can precompute this
+                        #jcb=np.zeros((2,2),dtype=np.float64)
+                        #for k in range(0,mV):
+                        #    jcb[0,0] += dNNNVdr[k]*xV[iconV[k,iel]]
+                        #    jcb[0,1] += dNNNVdr[k]*yV[iconV[k,iel]]
+                        #    jcb[1,0] += dNNNVds[k]*xV[iconV[k,iel]]
+                        #    jcb[1,1] += dNNNVds[k]*yV[iconV[k,iel]]
+                        #jcob = np.linalg.det(jcb)
+                        #jcbi = np.linalg.inv(jcb)
     
                         # compute dNdx & dNdy
-                        #xq=0.0
-                        #yq=0.0
                         for k in range(0,mV):
-                            #xq+=NNNV[k]*xV[iconV[k,iel]]
-                            #yq+=NNNV[k]*yV[iconV[k,iel]]
                             dNNNVdx[k]=jcbi[0,0]*dNNNVdr[k]+jcbi[0,1]*dNNNVds[k]
                             dNNNVdy[k]=jcbi[1,0]*dNNNVdr[k]+jcbi[1,1]*dNNNVds[k]
     
@@ -513,10 +508,8 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                                                      [0.        ,dNNNVdy[i]],
                                                      [dNNNVdy[i],dNNNVdx[i]]]
     
-                        etaq=eta_elemental[iel]
-    
                         # compute elemental a_mat matrix
-                        K_el+=b_mat.T.dot(c_mat.dot(b_mat))*etaq*weightq*jcob
+                        K_el+=b_mat.T.dot(c_mat.dot(b_mat))*eta_elemental[iel]*weightq*jcob
     
                         # compute elemental rhs vector
                         #for i in range(0,mV):
@@ -635,14 +628,15 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                         rq=qcoords[iq]
                         sq=qcoords[jq]
                         weightq=qweights[iq]*qweights[jq]
-                        NNNP[0:mP]=NNP(rq,sq)
+                        NNNP=NNP(rq,sq)
                         pq=NNNP.dot(p[iconP[0:mP,iel]])
-                        jcob=hx*hy/4
                         avrg_p+=pq*jcob*weightq
-    
+
+            avrg_p/=(Lx*Ly)
+ 
             logfile.write('          -> avrg_p='+str(avrg_p)+'\n')
     
-            p-=avrg_p/Lx/Ly
+            p-=avrg_p
     
             logfile.write("          -> p (m,M) %.4e %.4e (Pa)   \n" %(np.min(p),np.max(p)))
                 
@@ -656,7 +650,6 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
             exx = np.zeros(NV,dtype=np.float64)  
             eyy = np.zeros(NV,dtype=np.float64)  
             exy = np.zeros(NV,dtype=np.float64)  
-            ee  = np.zeros(NV,dtype=np.float64)  
             ccc = np.zeros(NV,dtype=np.float64)  
      
             for iel in range(0,nel):
@@ -664,16 +657,16 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                     rq = rVnodes[k]
                     sq = sVnodes[k]
                     inode=iconV[k,iel]
-                    NNNV[0:mV]=NNV(rq,sq)
-                    dNNNVdr[0:mV]=dNNVdr(rq,sq)
-                    dNNNVds[0:mV]=dNNVds(rq,sq)
-                    jcb=np.zeros((2,2),dtype=np.float64)
-                    for k in range(0,mV):
-                        jcb[0,0]+=dNNNVdr[k]*xV[iconV[k,iel]]
-                        jcb[0,1]+=dNNNVdr[k]*yV[iconV[k,iel]]
-                        jcb[1,0]+=dNNNVds[k]*xV[iconV[k,iel]]
-                        jcb[1,1]+=dNNNVds[k]*yV[iconV[k,iel]]
-                    jcbi=np.linalg.inv(jcb)
+                    NNNV=NNV(rq,sq)
+                    dNNNVdr=dNNVdr(rq,sq)
+                    dNNNVds=dNNVds(rq,sq)
+                    #jcb=np.zeros((2,2),dtype=np.float64)
+                    #for k in range(0,mV):
+                    #    jcb[0,0]+=dNNNVdr[k]*xV[iconV[k,iel]]
+                    #    jcb[0,1]+=dNNNVdr[k]*yV[iconV[k,iel]]
+                    #    jcb[1,0]+=dNNNVds[k]*xV[iconV[k,iel]]
+                    #    jcb[1,1]+=dNNNVds[k]*yV[iconV[k,iel]]
+                    #jcbi=np.linalg.inv(jcb)
                     for k in range(0,mV):
                         dNNNVdx[k]=jcbi[0,0]*dNNNVdr[k]+jcbi[0,1]*dNNNVds[k]
                         dNNNVdy[k]=jcbi[1,0]*dNNNVdr[k]+jcbi[1,1]*dNNNVds[k]
@@ -686,7 +679,6 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
             exx[:]/=ccc[:]
             eyy[:]/=ccc[:]
             exy[:]/=ccc[:]
-            ee[:]=np.sqrt(0.5*(exx[:]*exx[:]+eyy[:]*eyy[:])+exy[:]*exy[:])
      
             logfile.write("          -> exx (m,M) %.4e %.4e \n" %(np.min(exx),np.max(exx)))
             logfile.write("          -> eyy (m,M) %.4e %.4e \n" %(np.min(eyy),np.max(eyy)))
@@ -748,52 +740,43 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
             iel=nelx*iely+ielx
             swarm_r[im]=-1.+2*(swarm_x[im]-xV[iconV[0,iel]])/hx
             swarm_s[im]=-1.+2*(swarm_y[im]-yV[iconV[0,iel]])/hy
-            NNNV[0:mV]=NNV(swarm_r[im],swarm_s[im])
-            NNNP[0:mP]=NNP(swarm_r[im],swarm_s[im])
-            um=sum(NNNV[0:mV]*u[iconV[0:mV,iel]])
-            vm=sum(NNNV[0:mV]*v[iconV[0:mV,iel]])
-            #assign strain rate 
+            NNNV=NNV(swarm_r[im],swarm_s[im])
+            NNNP=NNP(swarm_r[im],swarm_s[im])
+            swarm_u[im]=sum(NNNV[0:mV]*u[iconV[0:mV,iel]])
+            swarm_v[im]=sum(NNNV[0:mV]*v[iconV[0:mV,iel]])
             swarm_exx[im]=sum(NNNV[0:mV]*exx[iconV[0:mV,iel]])
             swarm_eyy[im]=sum(NNNV[0:mV]*eyy[iconV[0:mV,iel]])
             swarm_exy[im]=sum(NNNV[0:mV]*exy[iconV[0:mV,iel]])
             swarm_ee[im]=np.sqrt(0.5*(swarm_exx[im]**2+swarm_eyy[im]**2+2*swarm_exy[im]**2) ) 
-            #assign velocity to marker
-            swarm_u[im]=um 
-            swarm_v[im]=vm
             #update its position
-            swarm_x[im]+=um*dt
-            swarm_y[im]+=vm*dt
+            swarm_x[im]+=swarm_u[im]*dt
+            swarm_y[im]+=swarm_v[im]*dt
+            if swarm_x[im]>Lx: swarm_x[im]-=Lx #periodic b.c. on right side
+            if swarm_x[im]<0:  swarm_x[im]+=Lx #periodic b.c. on left side
             #assign effective visc
             swarm_eta[im],swarm_gs[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
             =viscosity(swarm_x[im],swarm_y[im],swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im],egs)
             #assign pressure
-            swarm_p_dyn[im]=NNNP.dot(p[iconP[0:mP,iel]])
- 
-            if swarm_x[im]>Lx: swarm_x[im]-=Lx #periodic b.c. on right side
-            if swarm_x[im]<0:  swarm_x[im]+=Lx #periodic b.c. on left side
+            #swarm_p_dyn[im]=NNNP.dot(p[iconP[0:mP,iel]])
         #end for
 
         swarm_total_strainxx[:]+=swarm_exx[:]*dt
         swarm_total_strainyy[:]+=swarm_eyy[:]*dt
         swarm_total_strainxy[:]+=swarm_exy[:]*dt
         swarm_total_strain_eff[:]=np.sqrt(0.5*(swarm_total_strainxx[:]**2+\
-                                                       swarm_total_strainyy[:]**2+\
-                                                       2*swarm_total_strainxy[:]**2))
+                                               swarm_total_strainyy[:]**2)+\
+                                               swarm_total_strainxy[:]**2)
     
         #assign dev stress values
         #swarm_tauxx[im]=2*exxm*swarm_eta[im]
         #swarm_tauyy[im]=2*eyym*swarm_eta[im]
         #swarm_tauxy[im]=2*exym*swarm_eta[im]
-
         #swarm_sigmaxx[:]=-swarm_p_dyn[:]+swarm_tauxx[:]
         #swarm_sigmayy[:]=-swarm_p_dyn[:]+swarm_tauyy[:]
         #swarm_sigmaxy[:]=               +swarm_tauxy[:]
         #swarm_sigma_angle[:]=0.5*np.arctan(2*swarm_sigmaxy[:]/(swarm_sigmayy[:]-swarm_sigmaxx[:])) 
-    
         #swarm_tau_eff[:]=np.sqrt(0.5*(swarm_tauxx[:]**2+swarm_tauyy[:]**2+2*swarm_tauxy[:]**2))
-    
         #swarm_tau_angle[:]=0.5*np.arctan(2*swarm_tauxy[:]/(swarm_tauyy[:]-swarm_tauxx[:])) 
-    
         #swarm_sigma1[:]=(swarm_sigmaxx[:]+swarm_sigmayy[:])/2. \
         #               + np.sqrt( (swarm_sigmaxx[:]-swarm_sigmayy[:])**2/4 +swarm_sigmaxy[:]**2 ) 
         #swarm_sigma2[:]=(swarm_sigmaxx[:]+swarm_sigmayy[:])/2. \
@@ -827,26 +810,19 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
         #####################################################################
         start = time.time()
 
-        write_history(histfile,sr,tempdegC,total_time,istep,\
-                          swarm_mat,\
-                          swarm_total_strain_eff,\
-                          swarm_eta,\
-                          swarm_tau_eff,\
-                          swarm_ee,\
-                          swarm_gs)
+        write_history(histfile,background_sr,tempdegC,total_time,istep,\
+                      swarm_mat,swarm_total_strain_eff,swarm_eta,\
+                      swarm_tau_eff,swarm_ee,swarm_gs)
 
         logfile.write("     write_history: %.3f s \n" % (time.time() - start))
 
         #####################################################################
         # plot of solution
         #####################################################################
-        # the 9-node Q2 element does not exist in vtk, but the 8-node one 
-        # does, i.e. type=23. 
     
         start = time.time()
     
-        if istep==0 or istep==nstep-1 :  
-            #np.savetxt('markers.ascii',np.array([swarm_x,swarm_y,swarm_mat,swarm_eta]).T)
+        if istep==0 or istep==nstep-1 or total_time>tfinal:
         
             filename = output_folder+'solution_{:04d}.vtu'.format(istep)
             vtufile=open(filename,"w")
@@ -897,29 +873,25 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                 vtufile.write("%10e\n" % exy[i])
             vtufile.write("</DataArray>\n")
             #--
-            vtufile.write("<DataArray type='Float32' Name='ee' Format='ascii'> \n")
-            for i in range (0,NV):
-                vtufile.write("%10e\n" % ee[i])
-            vtufile.write("</DataArray>\n")
-            #--
             vtufile.write("</PointData>\n")
             #####
             vtufile.write("<Cells>\n")
             #--
             vtufile.write("<DataArray type='Int32' Name='connectivity' Format='ascii'> \n")
             for iel in range (0,nel):
-                vtufile.write("%d %d %d %d %d %d %d %d\n" %(iconV[0,iel],iconV[1,iel],iconV[2,iel],iconV[3,iel],iconV[4,iel],\
-                                                            iconV[5,iel],iconV[6,iel],iconV[7,iel]))
+                vtufile.write("%d %d %d %d %d %d %d %d %d\n" %(iconV[0,iel],iconV[1,iel],iconV[2,iel],\
+                                                               iconV[3,iel],iconV[4,iel],iconV[5,iel],\
+                                                               iconV[6,iel],iconV[7,iel],iconV[8,iel]))
             vtufile.write("</DataArray>\n")
             #--
             vtufile.write("<DataArray type='Int32' Name='offsets' Format='ascii'> \n")
             for iel in range (0,nel):
-                vtufile.write("%d \n" %((iel+1)*8))
+                vtufile.write("%d \n" %((iel+1)*9))
             vtufile.write("</DataArray>\n")
             #--
             vtufile.write("<DataArray type='Int32' Name='types' Format='ascii'>\n")
             for iel in range (0,nel):
-                vtufile.write("%d \n" %23)
+                vtufile.write("%d \n" %28)
             vtufile.write("</DataArray>\n")
             #--
             vtufile.write("</Cells>\n")
@@ -928,7 +900,9 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
             vtufile.write("</UnstructuredGrid>\n")
             vtufile.write("</VTKFile>\n")
             vtufile.close()
-        
+       
+            #---------------------------------------------------------
+ 
             filename = output_folder+'swarm_{:04d}.vtu'.format(istep)
             vtufile=open(filename,"w")
             vtufile.write("<VTKFile type='UnstructuredGrid' version='0.1' byte_order='BigEndian'> \n")
@@ -1016,6 +990,12 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                 vtufile.write("%3e \n" % swarm_ee[i] )
             vtufile.write("</DataArray>\n")
             #--
+            vtufile.write("<DataArray type='Float32' Name='T from shear heating' Format='ascii'>\n")
+            for i in range(0,nmarker):
+                vtufile.write("%3e \n" % (2*swarm_eta[im]*swarm_ee[i]**2/3000/1250*total_time) )
+            vtufile.write("</DataArray>\n")
+
+            #--
             #vtufile.write("<DataArray type='Float32' Name='tauxx (MPa)' Format='ascii'>\n")
             #for i in range(0,nmarker):
             #    vtufile.write("%3e \n" %(swarm_tauxx[i]/MPa))
@@ -1071,15 +1051,15 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                 vtufile.write("%10e \n" %swarm_eta[i])
             vtufile.write("</DataArray>\n")
             #--
-            vtufile.write("<DataArray type='Float32' Name='pressure dyn. (MPa)' Format='ascii'>\n")
-            for i in range(0,nmarker):
-                vtufile.write("%10e \n" %(swarm_p_dyn[i]/MPa))
-            vtufile.write("</DataArray>\n")
-            #--
-            #vtufile.write("<DataArray type='Float32' Name='r,s,t' NumberOfComponents='3' Format='ascii'>\n")
+            #vtufile.write("<DataArray type='Float32' Name='pressure dyn. (MPa)' Format='ascii'>\n")
             #for i in range(0,nmarker):
-            #    vtufile.write("%5e %5e %5e \n" %(swarm_r[i],swarm_s[i],0.))
+            #    vtufile.write("%10e \n" %(swarm_p_dyn[i]/MPa))
             #vtufile.write("</DataArray>\n")
+            #--
+            vtufile.write("<DataArray type='Float32' Name='r,s,t' NumberOfComponents='3' Format='ascii'>\n")
+            for i in range(0,nmarker):
+                vtufile.write("%5e %5e %5e \n" %(swarm_r[i],swarm_s[i],0.))
+            vtufile.write("</DataArray>\n")
             #--
             vtufile.write("<DataArray type='Float32' Name='velocity (cm/year)' NumberOfComponents='3' Format='ascii'>\n")
             for i in range(0,nmarker):
@@ -1132,6 +1112,13 @@ def stonerheo(sr,tempdegC,nely,egs,nmarker_per_dim):
                filename = 'swarm_mat_{:04d}.png'.format(istep)
                plt.savefig(filename,bbox_inches='tight')
                logfile.write("     export to png: %.3f s \n" % (time.time() - start))
+            #end if
+
+        #end if
+
+        if total_time>tfinal:
+           logfile.write("*****tfinal reached*****\n")
+           break
     
     ###################################################################################################
     # end for istep

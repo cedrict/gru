@@ -1,0 +1,2 @@
+pdflatex doc.tex
+biber doc
