@@ -13,14 +13,10 @@ from write_history import *
     
 ###################################################################################################
 
-def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius):
-    
-    Lx=1*cm         # horizontal extent of the domain in m 
-    Ly=1*cm         # vertical extent of the domain 
+def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly,CFL_nb):
 
     #time stepping
     nstep=100
-    CFL_nb=0.25
 
     #usefull parameters
     background_T=tempdegC+Tkelvin 

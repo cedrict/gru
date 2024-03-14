@@ -89,7 +89,9 @@ $t_{final} = \gamma/ \dot\varepsilon_b \simeq 2 \times 10^{15}~\si{\second}
 
 
 \begin{center}
-INSERT here fig of velocity is square
+\includegraphics[width=6cm]{images/mesh}
+\includegraphics[width=6cm]{images/vel}\\
+Left: mesh composed of 12x12 elements. Right: velocity field.
 \end{center}
 
 A cloud of passive markers (hereafter called swarm\footnote{\url{https://en.wikipedia.org/wiki/Swarm_behaviour}}) is 
@@ -99,15 +101,26 @@ markers placed in each element at the beginning of the simulation:
 \lstinline{nmarker_per_element=nmarker_per_dim**2}
 while the total number of markers in the domain is then 
 \lstinline{nmarker=nel*nmarker_per_element}.
-Markers are initially placed on a regular grid of positions inside each element, as shown in 
-Fig.XX
+Markers are initially placed on a regular grid of positions inside each element, as shown 
+here: 
 
 \begin{center}
-INSERT here figure with markers at t=0
+\includegraphics[width=5.6cm]{images/paint}
+\includegraphics[width=5.6cm]{images/mats}
+\includegraphics[width=5.6cm]{images/gs}\\
+Marker distribution at $t=0$. From left to right: paint, mat, grain size.
+Each element contains 5x5 markers.
 \end{center}
 
+At the beginning each marker is assigned a grain size $d=1000~\si{\micro\meter}$.
+In the middle of the domain random noise is added as shown in the figure above.
+It is a gaussian distribution with a prescribed standard deviation of 10\%
+of the initial background grain size.
+The grain size value carried by each marker is evolved according the 
+equation presented in Section~\ref{seq:gsev}.
+
 Each marker carries a lot of information stored in the \lstinline{swarm_xxx}
-arrays, where xxx stands for the name of the field, such as x,y,gs,eta,... 
+arrays, where xxx stands for the name of the field, such as x,y,gs,eta,exx,exy,... 
 
 At each time step markers are localised (i.e. we find in which element they reside
 in, the (effective) strain rate is interpolated onto them and passed as 
@@ -193,17 +206,6 @@ where $h$ is the element size and $C\in[0,1[$.
 
 
 
-At the beginning each marker is assigned a grain size $d=1000~\si{\micro\meter}$.
-In the middle of the domain random noise is added as shown in Fig.YYY
-\begin{center}
-INSERT fig of initial d
-\end{center}
-It is a gaussian distribution with a prescribed standard deviation of 10\%
-of the initial background grain size.
-The grain size value carried by each marker is evolved according the 
-equation presented in Section~\ref{seq:gsev}.
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Strain rate decomposition \label{sec:visc}}
@@ -226,14 +228,6 @@ with
 where $d$ is the grain size, $m$ is the grain size exponent, $\tau_p$ is the Peierls stress defined
 for low-temperature plasticity.
 
-Note that the first 3 equations above can be re-written:
-\begin{eqnarray}
-\tau &=& \left(\frac{\dot{\varepsilon}_{dsl}}{A_{dsl}} \right)^{1/n_{dsl}} \exp\left(\frac{Q_{dsl}}{n_{dsl}RT} \right) \\ 
-\tau &=& \left(\frac{\dot{\varepsilon}_{dif}}{A_{dif}} \right)^{1/n_{dif}} \exp\left(\frac{Q_{dsl}}{n_{dif}RT} \right) d^{m_{dif}/n_{dif}} \\
-\tau &=& \left(\frac{\dot{\varepsilon}_{gbs}}{A_{gbs}} \right)^{1/n_{gbs}} \exp\left(\frac{Q_{gbs}}{n_{gbs}RT} \right) d^{m_{gbs}/n_{gbs}} \\
-\end{eqnarray}
-
-
 
 There is one major problem with the equations above:
 Assuming $\dot\varepsilon$ and temperature $T$ known (as well as all the material parameters $A$, $Q$, $n$, ...),
@@ -252,6 +246,14 @@ https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.newton.html}
 which finds a zero of a real or complex function using the Newton-Raphson (or secant or Halley’s) method.
 Once $\tau$ (\lstinline{tau_NR}) has been found, it can then be inserted in the strain rate equations above and
 the strain rate partitioning is then complete.
+
+Note that the first 3 equations above can be re-written:
+\begin{eqnarray}
+\tau &=& \left(\frac{\dot{\varepsilon}_{dsl}}{A_{dsl}} \right)^{1/n_{dsl}} \exp\left(\frac{Q_{dsl}}{n_{dsl}RT} \right) \\ 
+\tau &=& \left(\frac{\dot{\varepsilon}_{dif}}{A_{dif}} \right)^{1/n_{dif}} \exp\left(\frac{Q_{dsl}}{n_{dif}RT} \right) d^{m_{dif}/n_{dif}} \\
+\tau &=& \left(\frac{\dot{\varepsilon}_{gbs}}{A_{gbs}} \right)^{1/n_{gbs}} \exp\left(\frac{Q_{gbs}}{n_{gbs}RT} \right) d^{m_{gbs}/n_{gbs}} 
+\end{eqnarray}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -352,12 +354,25 @@ This is all implemented in 3 functions:
 We have implemented a standalone code which computes $d_\infty$ 
 for a wide array of temperatures.
 
-
+\begin{center}
+\includegraphics[width=7cm]{images/dinf/dinf.pdf}
+\end{center}
 
 
 \end{itemize}
 
-
+The term $\dot{d}$ can be discretised by means of a simple 1st order scheme so that 
+\[
+\frac{d^k -d^{k-1}}{\delta t}=
+-\frac{\dot\varepsilon}{\dot\varepsilon_T} (d^{k-1}-d_\infty)
+\]
+where $k$ is the time step index. In the end, we can update the grain size 
+for each grain as follows:
+\[
+d^k = 
+-\frac{\dot\varepsilon}{\dot\varepsilon_T} (d^{k-1}-d_\infty) \delta t + d^{k-1}
+\]
+This is carried out in the \lstinline{gs_evolution} function.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 \section{shear heating}

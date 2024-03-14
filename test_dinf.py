@@ -18,27 +18,32 @@ tau_dis=np.zeros(600)
 dinf=np.zeros(600)
 tau=np.zeros(600)
 
+#----------------------
+# interface diff gbs
+
 for i in range(0,600):
     T=i+550+Tkelvin
     dinf_gbs_diff[i]=compute_dinf_gbs_diff(sr,T) 
     tau_diff[i]=(eeq/Adiff*np.exp(Ediff/Rgas/T)*dinf_gbs_diff[i]**mdiff)**(1/ndiff)
     tau_gbs[i] =(eeq/Agbs *np.exp(Egbs/Rgas/T) *dinf_gbs_diff[i]**mgbs) **(1/ngbs)
-
     #print(dinf_gbs_diff[i],tau_diff[i],tau_gbs[i],T)
 
 np.savetxt('gbs_diff.ascii',np.array([dinf_gbs_diff,tau_diff,tau_gbs ]).T,header='# xx')
 
+#----------------------
+# interface dis gbs
 
 for i in range(0,600):
     T=i+550+Tkelvin
     dinf_dis_diff[i]=compute_dinf_dis_diff(sr,T) 
     tau_diff[i]=(eeq/Adiff*np.exp(Ediff/Rgas/T)*dinf_dis_diff[i]**mdiff)**(1/ndiff)
     tau_dis[i]=(eeq/Adis*np.exp(Edis/Rgas/T))**(1/ndis)
-
     #print(dinf_dis_diff[i],tau_diff[i],tau_dis[i],T)
 
 np.savetxt('dis_diff.ascii',np.array([dinf_dis_diff,tau_diff,tau_dis ]).T,header='# xx')
 
+#----------------------
+# unify interfaces
 
 for i in range(0,600):
     T=i+550+Tkelvin

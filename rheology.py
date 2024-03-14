@@ -84,14 +84,14 @@ def compute_dinf_gbs_diff(sr,T):
     eeq=sr/2
     expo=mdiff/ndiff-mgbs/ngbs
     db12=( (eeq/Agbs)**(1/ngbs)*(eeq/Adiff)**(-1/ndiff)*np.exp((Egbs/ngbs-Ediff/ndiff)/Rgas/T))**(1/expo)
-    dinf=max(10,db12)
+    dinf=max(9,db12)
     return dinf
 
 def compute_dinf_dis_diff(sr,T):
     eeq=sr/2
     expo=ndiff/mdiff
     db12=( (eeq/Adis)**(1/ndis)*(eeq/Adiff)**(-1/ndiff)*np.exp((Edis/ndis-Ediff/ndiff)/Rgas/T))**expo
-    dinf=max(10,db12)
+    dinf=max(9,db12)
     return dinf
 
 def compute_dinf(sr,T):
