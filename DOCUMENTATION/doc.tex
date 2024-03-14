@@ -7,6 +7,7 @@
 \usepackage{bm}
 \usepackage{amsmath}
 \usepackage{amsfonts}
+\usepackage{graphicx}
 
 \newcommand{\K}{{\mathbb{K}}}
 \newcommand{\G}{{\mathbb{G}}}
@@ -218,12 +219,20 @@ diffusion creep, disGBS and low-temperature plasticity:
 with
 \begin{eqnarray}
 \dot{\varepsilon}_{dsl}&=&A_{dsl}\exp\left(-\frac{Q_{dsl}}{RT} \right) \tau^{n_{dsl}}  \\
-\dot{\varepsilon}_{dif}&=&A_{dif}\exp\left(-\frac{Q_{dif}}{RT} \right) \tau^{n_{dif}} d^{m_{dif}} \\
-\dot{\varepsilon}_{gbs}&=&A_{gbs}\exp\left(-\frac{Q_{gbs}}{RT} \right) \tau^{n_{gbs}} d^{m_{gbs}} \\
+\dot{\varepsilon}_{dif}&=&A_{dif}\exp\left(-\frac{Q_{dif}}{RT} \right) \tau^{n_{dif}} d^{-m_{dif}} \\
+\dot{\varepsilon}_{gbs}&=&A_{gbs}\exp\left(-\frac{Q_{gbs}}{RT} \right) \tau^{n_{gbs}} d^{-m_{gbs}} \\
 \dot{\varepsilon}_{exp}&=&A_{exp}\exp\left[-\frac{Q_{exp}}{RT} \left(1 -\frac{\tau}{\tau_p}\right)^{n_{exp}} \right]   
 \end{eqnarray}
 where $d$ is the grain size, $m$ is the grain size exponent, $\tau_p$ is the Peierls stress defined
 for low-temperature plasticity.
+
+Note that the first 3 equations above can be re-written:
+\begin{eqnarray}
+\tau &=& \left(\frac{\dot{\varepsilon}_{dsl}}{A_{dsl}} \right)^{1/n_{dsl}} \exp\left(\frac{Q_{dsl}}{n_{dsl}RT} \right) \\ 
+\tau &=& \left(\frac{\dot{\varepsilon}_{dif}}{A_{dif}} \right)^{1/n_{dif}} \exp\left(\frac{Q_{dsl}}{n_{dif}RT} \right) d^{m_{dif}/n_{dif}} \\
+\tau &=& \left(\frac{\dot{\varepsilon}_{gbs}}{A_{gbs}} \right)^{1/n_{gbs}} \exp\left(\frac{Q_{gbs}}{n_{gbs}RT} \right) d^{m_{gbs}/n_{gbs}} \\
+\end{eqnarray}
+
 
 
 There is one major problem with the equations above:
@@ -256,15 +265,99 @@ deformation rate $\dot{\varepsilon}$ according to
 \[
 \dot{d} = -\frac{\dot\varepsilon}{\dot\varepsilon_T} (d-d_\infty)
 \]
-where $d_\infty$ obeys the following piezometric 
-relationship
+where $d_\infty$ can be defined in multiple ways:
+\begin{itemize}
+\item in \textcite{brcp99}, it obeys the following piezometric relationship
 \[
 d_\infty = B \tau^{-p}
 \]
 where $d_\infty$ is the recrystallized grain size defined
 by the field boundary hypothesis
 
-FG: Please clean this 
+As of now this option is not implemented.
+
+\item in \textcite{prgu09} it is defined as the boundary between
+GBS and diff or disl and diff.
+In this paper $d_\infty$ is the recrystallized grain size defined
+by the field boundary hypothesis
+and is  shown on the following figure:
+
+\begin{center}
+\includegraphics[width=8cm]{images/prgu09}
+\end{center}
+
+Let us first consider the GBS-diff boundary. Exactly on the line 
+both mechanisms have the same strain rate (50\% of the total strain rate)
+and same stress $\tau$ .
+
+\[
+\tau
+=
+\left(\frac{\dot\varepsilon}{A_{dif}}\exp\left(\frac{Q_{dif}}{RT} \right) d^{m_{dif}} \right)^{1/n_{dif}}
+=
+\left(\frac{\dot\varepsilon}{A_{gbs}} \exp\left(\frac{Q_{gbs}}{RT} \right)  d^{m_{gbs}} \right)^{1/n_{gbs}}
+\]
+
+\[
+\left(\frac{\dot\varepsilon}{A_{dif}}  \right)^{1/n_{dif}}
+\exp\left(\frac{Q_{dif}}{RT n_{dif}} \right) d^{m_{dif}/n_{dif}} 
+=
+\left(\frac{\dot\varepsilon}{A_{gbs}} \right)^{1/n_{gbs}}
+ \exp\left(\frac{Q_{gbs}}{n_{gbs}RT} \right)  d^{m_{gbs}/n_{gbs}}
+\]
+\[
+d^{m_{dif}/n_{dif}}  d^{-m_{gbs}/n_{gbs}}
+=
+\left(\frac{\dot\varepsilon}{A_{gbs}} \right)^{1/n_{gbs}}
+\left(\frac{\dot\varepsilon}{A_{dif}}  \right)^{-1/n_{dif}}
+\exp\left(\frac{Q_{gbs}}{n_{gbs}RT} \right)  
+\exp\left(-\frac{Q_{dif}}{RT n_{dif}} \right) 
+\]
+
+\[
+d^{m_{dif}/n_{dif}-m_{gbs}/n_{gbs}}
+=
+\left(\frac{\dot\varepsilon}{A_{gbs}} \right)^{1/n_{gbs}}
+\left(\frac{\dot\varepsilon}{A_{dif}}  \right)^{-1/n_{dif}}
+\exp\left( \frac{1}{RT}  (\frac{Q_{gbs}}{n_{gbs}} -\frac{Q_{dif}}{n_{dif}}) \right) 
+\]
+
+
+\[
+d_\infty
+=
+\left[\left(\frac{\dot\varepsilon}{A_{gbs}} \right)^{1/n_{gbs}}
+\left(\frac{\dot\varepsilon}{A_{dif}}  \right)^{-1/n_{dif}}
+\exp\left( \frac{1}{RT}  (\frac{Q_{gbs}}{n_{gbs}} -\frac{Q_{dif}}{n_{dif}}) \right) 
+\right]^{1/(m_{dif}/n_{dif}-m_{gbs}/n_{gbs})}
+\]
+This expression is a function of temperature $T$ and strainrate.
+
+Likewise we can establis the grain size $d_\infty$ at the boundary between dis and diff
+(note that dis does not depend on grain size so $m_{dis}=0$:
+
+\[
+d_\infty
+=
+\left[\left(\frac{\dot\varepsilon}{A_{dis}} \right)^{1/n_{dis}}
+\left(\frac{\dot\varepsilon}{A_{dif}}  \right)^{-1/n_{dif}}
+\exp\left( \frac{1}{RT}  (\frac{Q_{dis}}{n_{dis}} -\frac{Q_{dif}}{n_{dif}}) \right) 
+\right]^{n_{dif}/m_{dif}}
+\]
+
+This is all implemented in 3 functions:
+\lstinline{compute_dinf_gbs_diff},
+\lstinline{compute_dinf_dis_diff},
+\lstinline{compute_dinf}.
+We have implemented a standalone code which computes $d_\infty$ 
+for a wide array of temperatures.
+
+
+
+
+\end{itemize}
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 \section{shear heating}

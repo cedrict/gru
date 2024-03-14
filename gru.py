@@ -13,11 +13,10 @@ from write_history import *
     
 ###################################################################################################
 
-def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma):
+def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius):
     
     Lx=1*cm         # horizontal extent of the domain in m 
     Ly=1*cm         # vertical extent of the domain 
-    radius=Lx/8     # for mat 2 (mean value in a small circle)
 
     #time stepping
     nstep=100
@@ -267,6 +266,7 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma):
     swarm_sr_diff=np.zeros(nmarker,dtype=np.float64)            # strain rate 
     swarm_sr_gbs=np.zeros(nmarker,dtype=np.float64)             # strain rate 
     swarm_sr_lowT=np.zeros(nmarker,dtype=np.float64)            # strain rate 
+    swarm_dinf=np.zeros(nmarker,dtype=np.float64)               # d_inf
     
     counter=0
     for iel in range(0,nel):
@@ -403,8 +403,8 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma):
                 swarm_eyy[im]=sum(NNNV[0:mV]*eyy[iconV[0:mV,iel]])
                 swarm_exy[im]=sum(NNNV[0:mV]*exy[iconV[0:mV,iel]])
                 swarm_ee[im]=np.sqrt(0.5*(swarm_exx[im]**2+swarm_eyy[im]**2+2*swarm_exy[im]**2) ) 
-                swarm_eta[im],swarm_gs[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
-                =viscosity(swarm_x[im],swarm_y[im],swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im],egs)
+                swarm_eta[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
+                =viscosity(swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im])
     
                 if abs(avrg)==1 : # arithmetic
                    eta_elemental[iel]     +=swarm_eta[im]
@@ -751,11 +751,11 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma):
             #update its position
             swarm_x[im]+=swarm_u[im]*dt
             swarm_y[im]+=swarm_v[im]*dt
-            if swarm_x[im]>Lx: swarm_x[im]-=Lx #periodic b.c. on right side
-            if swarm_x[im]<0:  swarm_x[im]+=Lx #periodic b.c. on left side
+            if swarm_x[im]>=Lx: swarm_x[im]-=Lx #periodic b.c. on right side
+            if swarm_x[im]<0:   swarm_x[im]+=Lx #periodic b.c. on left side
             #assign effective visc
-            swarm_eta[im],swarm_gs[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
-            =viscosity(swarm_x[im],swarm_y[im],swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im],egs)
+            swarm_eta[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
+            =viscosity(swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im])
             #assign pressure
             #swarm_p_dyn[im]=NNNP.dot(p[iconP[0:mP,iel]])
         #end for
@@ -822,7 +822,8 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma):
     
         start = time.time()
     
-        if istep==0 or istep==nstep-1 or total_time>tfinal:
+        #if istep==0 or istep==nstep-1 or total_time>tfinal:
+        if True:
         
             filename = output_folder+'solution_{:04d}.vtu'.format(istep)
             vtufile=open(filename,"w")

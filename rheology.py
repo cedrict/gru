@@ -35,7 +35,7 @@ def compute_sr(x,sr,gs,T):
 # and returned viscosity is such that it remains between 1e18 and 1e26
 ###################################################################################################
 
-def viscosity(x,y,ee,T,imat,grainsize,egs):  
+def viscosity(ee,T,imat,grainsize):  
 
         sr=max(1e-19,ee) # minimum strain rate (s^-1)
         gs=max(grainsize,20) # minimum grain size (microns)
@@ -57,33 +57,8 @@ def viscosity(x,y,ee,T,imat,grainsize,egs):
         taunr = optimize.newton(f,sig,args=(sr,gs,T),tol=1e-3, maxiter=100,disp=True)
 
         etaeff=taunr*1e6/2/sr #stress is in MPa
-
         
         computed_sr = compute_sr(taunr,sr,gs,T) # returns: sr_dis,sr_diff,sr_gbs,sr_lowT
-
-        # Find position of largest strain rate, this is the dominant mechanism
-        # Translation key: dis = 0, diff = 1, gbs = 2, lowT = 3
-        #max_mech = np.argmax(computed_sr)
-
-        ########################################
-        # define the final grain size
-        ########################################
-        A1=Agbs; n1=ngbs; E1=Egbs; m1=mgbs
-        A2=Adiff; n2=ndiff; E2=Ediff; m2=mdiff
-        eeq=sr/2
-        db12=(eeq/A2*(A1/eeq)**(n2/n1) * np.exp(E2/Rgas/(T)-n2*E1/n1/Rgas/(T)))**(1/(n2/n1*m1-m2))
-        if computed_sr[1]>computed_sr[2]:  # diffusion creep dominant over gbs
-            A1=Adis; n1=ndis; E1=Edis; m1=0
-            A2=Adiff; n2=ndiff; E2=Ediff; m2=mdiff
-            eeq=sr/2
-            db12=(eeq/A2*(A1/eeq)**(n2/n1) * np.exp(E2/Rgas/(T)-n2*E1/n1/Rgas/(T)))**(1/(n2/n1*m1-m2))
-        dinf=max(10,db12)
-        #dinf=20
-        kin=4e13*egs
-        if imat==3: kin=0
-        grainsize=grainsize-sr*kin*(grainsize-dinf)
-        ########################################
-
 
         #viscosity cutoffs
         etaeff=min(etaeff,1e26)
@@ -91,11 +66,45 @@ def viscosity(x,y,ee,T,imat,grainsize,egs):
 
         etaeff=1e21
 
-        return etaeff,grainsize,computed_sr[0],computed_sr[1],computed_sr[2],computed_sr[3] 
+        return etaeff,computed_sr[0],computed_sr[1],computed_sr[2],computed_sr[3] 
 
 ###################################################################################################
 
-def gs_evolution(gs,sr):
+def gs_evolution(gs,sr,dinf,egs):
+
+   
 
     return gs
+
+
+
+###################################################################################################
+
+def compute_dinf_gbs_diff(sr,T):
+    eeq=sr/2
+    expo=mdiff/ndiff-mgbs/ngbs
+    db12=( (eeq/Agbs)**(1/ngbs)*(eeq/Adiff)**(-1/ndiff)*np.exp((Egbs/ngbs-Ediff/ndiff)/Rgas/T))**(1/expo)
+    dinf=max(10,db12)
+    return dinf
+
+def compute_dinf_dis_diff(sr,T):
+    eeq=sr/2
+    expo=ndiff/mdiff
+    db12=( (eeq/Adis)**(1/ndis)*(eeq/Adiff)**(-1/ndiff)*np.exp((Edis/ndis-Ediff/ndiff)/Rgas/T))**expo
+    dinf=max(10,db12)
+    return dinf
+
+def compute_dinf(sr,T):
+    eeq=sr/2
+    dinf1=compute_dinf_gbs_diff(sr,T)
+    tau_gbs=(eeq/Agbs *np.exp(Egbs/Rgas/T) *dinf1**mgbs) **(1/ngbs)
+    dinf2=compute_dinf_dis_diff(sr,T)
+    tau_dis=(eeq/Adis*np.exp(Edis/Rgas/T))**(1/ndis)
+    if tau_gbs<tau_dis:
+       dinf=dinf1
+    else:
+       dinf=dinf2
+    return dinf 
+
+###################################################################################################
 
