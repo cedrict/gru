@@ -13,14 +13,13 @@ from write_history import *
     
 ###################################################################################################
 
-def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly,CFL_nb):
+def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly,CFL_nb,background_gs,rootfolder):
 
-    #time stepping
+    #max number of time steps
     nstep=100
 
     #usefull parameters
     background_T=tempdegC+Tkelvin 
-    background_gs=1000 # initial grain size in microns
 
     #markers parameters
     avrg=3
@@ -37,11 +36,13 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
 
     ###############################################################################################
     
-    output_folder='GrainSize-T-'+str(int(tempdegC))+'Kinetics-'+str(egs)+'/'
-    histfile='Hist-T-'+str(int(tempdegC))+'-Sr-'+str(-int(np.log10(background_sr)))+'-Kinetics-'+str(egs)+'-PercMat2-'+str(int(permat2))
-    if not os.path.isdir(output_folder): os.mkdir(output_folder)  
+    output_folder=rootfolder+'GrainSize-T-'+str(int(tempdegC))+'Kinetics-'+str(egs)+'/'
+    if not os.path.isdir(output_folder): 
+       os.mkdir(rootfolder)
+       os.mkdir(output_folder)  
     convfile=open(output_folder+'conv.ascii',"w")
     logfile=open(output_folder+'log.ascii',"w")
+    histfile=rootfolder+'Hist-T-'+str(int(tempdegC))+'-Sr-'+str(-int(np.log10(background_sr)))+'-Kinetics-'+str(egs)+'-PercMat2-'+str(int(permat2))
 
     print('  |results in:'+output_folder)
     print('  |'+histfile)
@@ -86,6 +87,13 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
     logfile.write("------------------------------\n")
     
     eta_ref=1e20 # purely numerical parameter - do not change
+
+    time_localise_markers=0
+    time_advect_markers=0
+    time_build_matrix=0
+    time_solve_system=0
+    time_compute_viscosity=0
+    time_compute_sr=0
     
     #################################################################
     # grid point setup
@@ -363,6 +371,8 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
         #end for
     
         logfile.write("     localise markers: %.3f s \n" % (time.time() - start))
+
+        time_localise_markers+=time.time() - start
     
         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -436,6 +446,8 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
             logfile.write("          -> eta_nodal     (m,M) %.5e %.5e \n" %(np.min(eta_nodal),np.max(eta_nodal)))
     
             logfile.write("     markers onto grid: %.3f s\n" % (time.time() - start))
+
+            time_compute_viscosity+=time.time() - start
     
             #################################################################
             # build FE matrix
@@ -571,9 +583,11 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
             #end for iel
     
             logfile.write("     build FE matrix: %.3f s \n" % (time.time() - start))
+
+            time_build_matrix+=time.time() - start
     
             ######################################################################
-            # assemble K, G, GT, f, h into A and rhs
+            # solve system 
             ######################################################################
             start = time.time()
     
@@ -584,16 +598,11 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
             rhs[0:NfemV]=f_rhs
             rhs[NfemV:Nfem]=h_rhs
     
-            logfile.write("     assemble blocks: %.3f s \n" % (time.time() - start))
-    
-            ######################################################################
-            # solve system
-            ######################################################################
-            start = time.time()
-    
             sol=sps.linalg.spsolve(sparse_matrix,rhs)
     
             logfile.write("     solve time: %.3f s \n" % (time.time() - start))
+
+            time_solve_system+=time.time() - start
     
             ######################################################################
             # put solution into separate x,y velocity arrays
@@ -663,9 +672,12 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
                     #    jcb[1,0]+=dNNNVds[k]*xV[iconV[k,iel]]
                     #    jcb[1,1]+=dNNNVds[k]*yV[iconV[k,iel]]
                     #jcbi=np.linalg.inv(jcb)
-                    for k in range(0,mV):
-                        dNNNVdx[k]=jcbi[0,0]*dNNNVdr[k]+jcbi[0,1]*dNNNVds[k]
-                        dNNNVdy[k]=jcbi[1,0]*dNNNVdr[k]+jcbi[1,1]*dNNNVds[k]
+                    #for k in range(0,mV):
+                    #    dNNNVdx[k]=jcbi[0,0]*dNNNVdr[k]+jcbi[0,1]*dNNNVds[k]
+                    #    dNNNVdy[k]=jcbi[1,0]*dNNNVdr[k]+jcbi[1,1]*dNNNVds[k]
+                    #for k in range(0,mV):
+                    dNNNVdx[:]=jcbi[0,0]*dNNNVdr[:]
+                    dNNNVdy[:]=jcbi[1,1]*dNNNVds[:]
                     ccc[inode]+=1
                     exx[inode]+=dNNNVdx.dot(u[iconV[:,iel]])
                     eyy[inode]+=dNNNVdy.dot(v[iconV[:,iel]])
@@ -681,6 +693,8 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
             logfile.write("          -> exy (m,M) %.4e %.4e \n" %(np.min(exy),np.max(exy)))
      
             logfile.write("     compute strain rate: %.3f s \n" % (time.time() - start))
+
+            time_compute_sr+=time.time() - start
     
             ######################################################################
             # convergence criterion is based on difference between two consecutively
@@ -737,22 +751,22 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
             swarm_r[im]=-1.+2*(swarm_x[im]-xV[iconV[0,iel]])/hx
             swarm_s[im]=-1.+2*(swarm_y[im]-yV[iconV[0,iel]])/hy
             NNNV=NNV(swarm_r[im],swarm_s[im])
-            NNNP=NNP(swarm_r[im],swarm_s[im])
             swarm_u[im]=sum(NNNV[0:mV]*u[iconV[0:mV,iel]])
             swarm_v[im]=sum(NNNV[0:mV]*v[iconV[0:mV,iel]])
-            swarm_exx[im]=sum(NNNV[0:mV]*exx[iconV[0:mV,iel]])
-            swarm_eyy[im]=sum(NNNV[0:mV]*eyy[iconV[0:mV,iel]])
-            swarm_exy[im]=sum(NNNV[0:mV]*exy[iconV[0:mV,iel]])
-            swarm_ee[im]=np.sqrt(0.5*(swarm_exx[im]**2+swarm_eyy[im]**2+2*swarm_exy[im]**2) ) 
+            #swarm_exx[im]=sum(NNNV[0:mV]*exx[iconV[0:mV,iel]])
+            #swarm_eyy[im]=sum(NNNV[0:mV]*eyy[iconV[0:mV,iel]])
+            #swarm_exy[im]=sum(NNNV[0:mV]*exy[iconV[0:mV,iel]])
+            #swarm_ee[im]=np.sqrt(0.5*(swarm_exx[im]**2+swarm_eyy[im]**2+2*swarm_exy[im]**2) ) 
             #update its position
             swarm_x[im]+=swarm_u[im]*dt
             swarm_y[im]+=swarm_v[im]*dt
             if swarm_x[im]>=Lx: swarm_x[im]-=Lx #periodic b.c. on right side
             if swarm_x[im]<0:   swarm_x[im]+=Lx #periodic b.c. on left side
             #assign effective visc
-            swarm_eta[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
-            =viscosity(swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im])
+            #swarm_eta[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
+            #=viscosity(swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im])
             #assign pressure
+            #NNNP=NNP(swarm_r[im],swarm_s[im])
             #swarm_p_dyn[im]=NNNP.dot(p[iconP[0:mP,iel]])
         #end for
 
@@ -779,6 +793,8 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
         #               - np.sqrt( (swarm_sigmaxx[:]-swarm_sigmayy[:])**2/4 +swarm_sigmaxy[:]**2 ) 
     
         logfile.write("     advect markers: %.3f s\n" % (time.time() - start))
+
+        time_advect_markers+=time.time() - start
     
         #####################################################################
         # interpolate pressure onto velocity grid points
@@ -1120,6 +1136,13 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
     ###################################################################################################
     # end for istep
     ###################################################################################################
+
+    print('  |time_localise_markers= ',time_localise_markers)
+    print('  |time_advect_markers=   ',time_advect_markers)
+    print('  |time_build_matrix=     ',time_build_matrix)
+    print('  |time_solve_system=     ',time_solve_system)
+    print('  |time_compute_viscosity=',time_compute_viscosity)
+    print('  |time_compute_sr=       ',time_compute_sr)
     
     logfile.write("-----------------------------\n")
     logfile.write(f"-------end ------\n")

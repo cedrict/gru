@@ -1,0 +1,58 @@
+#gnuplot
+set term pdf enhanced font "Times,12pt"
+set xlabel 'grain size (micron)'
+set ylabel 'stress (MPa)'
+
+Rgas=8.314
+
+Adis = 1.1*1e5 ; ndis = 3.5 ; Edis = 530*1e3 # Olivine, Hirth & Kohlstedt 2003 
+
+Adiff = 10**7.6; ndiff = 1.0 ; mdiff=3. ; Ediff = 371*1e3 # Olivine, Hirth & Kohlstedt, 2003, corrected in Hansen
+
+Agbs = 6.5*1e3 ; ngbs = 3.5 ; mgbs=2. ; Egbs = 400*1e3 # Olivine, Hirth & Kohlstedt, 2003
+
+AlowT = 5.7*1e11;plowT=1; qlowT=2; ElowT=535e3;  taulowT=8500; # Goetze, carefull define only for T<700°C!!!
+TlowT=640 + 273;
+
+sr=1e-15
+
+#x temperature
+#y gs
+
+tau_dis700(x)=(sr/Adis * exp(Edis/Rgas/(700+273)))**(1./ndis)
+tau_dis800(x)=(sr/Adis * exp(Edis/Rgas/(800+273)))**(1./ndis)
+tau_dis900(x)=(sr/Adis * exp(Edis/Rgas/(900+273)))**(1./ndis)
+
+tau_diff700(x)=sr/Adiff * exp(Ediff/Rgas/(700+273))*x**mdiff
+tau_diff800(x)=sr/Adiff * exp(Ediff/Rgas/(800+273))*x**mdiff
+tau_diff900(x)=sr/Adiff * exp(Ediff/Rgas/(900+273))*x**mdiff
+
+tau_gbs600(x)=(sr/Agbs * exp(Egbs/Rgas/(600+273))*x**mdiff)**(1/ngbs)
+tau_gbs700(x)=(sr/Agbs * exp(Egbs/Rgas/(700+273))*x**mdiff)**(1/ngbs)
+tau_gbs800(x)=(sr/Agbs * exp(Egbs/Rgas/(800+273))*x**mdiff)**(1/ngbs)
+
+A=(sr/Agbs)**(1/ngbs)
+B=(sr/Adiff)**(-1/ndiff)
+C700=exp((Egbs/ngbs-Ediff/ndiff)/Rgas/(700+273))
+D=mdiff/ndiff-mgbs/ngbs
+
+d700=(A*B*C700)**(1/D)
+print( d700)
+
+set output 'map.pdf'
+set log xy 
+set key outside
+
+plot[10:10000][1:1e4]\
+tau_dis700(x) lt 2 t 'dis,700C',\
+tau_dis800(x) lt 3 t 'dis,800C',\
+tau_dis900(x) lt 4 t 'dis,900C',\
+tau_gbs600(x) lt 1 t 'gbs,600C',\
+tau_gbs700(x) lt 2 t 'gbs,700C',\
+tau_gbs800(x) lt 3 t 'gbs,800C',\
+tau_diff700(x) lt 2 t 'diff,700C',\
+tau_diff800(x) lt 3 t 'diff,800C',\
+tau_diff900(x) lt 4 t 'diff,900C'
+
+
+

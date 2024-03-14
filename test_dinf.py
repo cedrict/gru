@@ -57,4 +57,14 @@ for i in range(0,600):
 
 np.savetxt('dinf.ascii',np.array([dinf,tau]).T,header='# xx')
 
+#----------------------
+# test function
+
+for i in range(0,600):
+    T=i+550+Tkelvin
+    dinf[i],tau[i]=compute_dinf(sr,T)
+
+np.savetxt('dinf2.ascii',np.array([dinf,tau]).T,header='# xx')
+
+
 ###################################################################################################

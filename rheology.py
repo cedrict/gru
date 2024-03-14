@@ -40,11 +40,9 @@ def viscosity(ee,T,imat,grainsize):
         sr=max(1e-19,ee) # minimum strain rate (s^-1)
         gs=max(grainsize,20) # minimum grain size (microns)
 
-        sigdis=(sr/Adis)**(1/ndis) * np.exp(Edis/ (ndis*Rgas*T))
-
-        sigdiff=(sr/Adiff)**(1/ndiff) * gs**(mdiff/ndiff) * np.exp(Ediff/(ndiff*Rgas*T))
-
-        siggbs=(sr/Agbs)**(1/ngbs) * gs**(mgbs/ngbs) * np.exp(Egbs / (ngbs*Rgas*T))
+        sigdis =(sr/Adis )**(1/ndis)  *                     np.exp(Edis / (ndis*Rgas*T) )
+        sigdiff=(sr/Adiff)**(1/ndiff) * gs**(mdiff/ndiff) * np.exp(Ediff/ (ndiff*Rgas*T))
+        siggbs =(sr/Agbs )**(1/ngbs)  * gs**(mgbs/ngbs)   * np.exp(Egbs / (ngbs*Rgas*T) )
 
         if T<TlowT:
            siglowT=taulowT*(1-(-Rgas*T/ElowT * np.log(sr/AlowT))**(1/qlowT))**(1/plowT)
@@ -58,7 +56,7 @@ def viscosity(ee,T,imat,grainsize):
 
         etaeff=taunr*1e6/2/sr #stress is in MPa
         
-        computed_sr = compute_sr(taunr,sr,gs,T) # returns: sr_dis,sr_diff,sr_gbs,sr_lowT
+        computed_sr=compute_sr(taunr,sr,gs,T) # returns: sr_dis,sr_diff,sr_gbs,sr_lowT
 
         #viscosity cutoffs
         etaeff=min(etaeff,1e26)
@@ -70,13 +68,10 @@ def viscosity(ee,T,imat,grainsize):
 
 ###################################################################################################
 
-def gs_evolution(gs,sr,dinf,egs):
-
-   
-
+def gs_evolution(gs,sr,egs):
+    dinf,dummy=compute_dinf(sr,T)
+    gs-=sr/egs*(gs-dinf) 
     return gs
-
-
 
 ###################################################################################################
 
@@ -97,14 +92,16 @@ def compute_dinf_dis_diff(sr,T):
 def compute_dinf(sr,T):
     eeq=sr/2
     dinf1=compute_dinf_gbs_diff(sr,T)
-    tau_gbs=(eeq/Agbs *np.exp(Egbs/Rgas/T) *dinf1**mgbs) **(1/ngbs)
+    tau_gbs=(eeq/Agbs *np.exp(Egbs/Rgas/T)*dinf1**mgbs) **(1/ngbs)
     dinf2=compute_dinf_dis_diff(sr,T)
     tau_dis=(eeq/Adis*np.exp(Edis/Rgas/T))**(1/ndis)
     if tau_gbs<tau_dis:
        dinf=dinf1
+       tau=tau_gbs
     else:
        dinf=dinf2
-    return dinf 
+       tau=tau_dis
+    return dinf,tau
 
 ###################################################################################################
 

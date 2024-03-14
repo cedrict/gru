@@ -27,19 +27,23 @@ temp=np.arange(Tmin,Tmax,dtemp)
     
 radius=Lx/8  # for mat 2 (mean value in a small circle)
 
-gamma=2 #total deformation
+gamma=0.2 #total deformation
     
-CFL_nb=0.00025
+CFL_nb=0.125
+
+background_gs=1000 # initial grain size in microns
 
 # kinetics of grain size reduction (0.75 works fine). Smaller-> slower grain size reduction
 # this is epsilon_T parameter of eq.2 of prgu09 
 egs=0.75 
 
+rootfolder='./ABC/'
+
 for i in range(len(temp)):
     start = time.time()
-    gru.stonerheo(sr,temp[i],nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly,CFL_nb)
+    gru.stonerheo(sr,temp[i],nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly,CFL_nb,background_gs,rootfolder)
     end = time.time()
-    print('-->Temp=',temp[i],'C | time=',end-start)
+    print('>>>Temp=',temp[i],'C | total time=',end-start)
 
 #gru.stonerheo(sr,Tmin,nely,egs)
 
