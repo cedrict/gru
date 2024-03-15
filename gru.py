@@ -26,7 +26,7 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
 
     #nonlinear iterations parameters
     niter=10
-    tol=1e-4
+    tol=1e-3
 
     # processing input    
     v0=background_sr*Ly                  # bc velocity so that shear strain rate is the imposed strain rate sr
@@ -37,11 +37,13 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
     ###############################################################################################
     
     output_folder=rootfolder+'GrainSize-T-'+str(int(tempdegC))+'Kinetics-'+str(egs)+'/'
-    if not os.path.isdir(output_folder): 
+    if not os.path.isdir(rootfolder): 
        os.mkdir(rootfolder)
+    if not os.path.isdir(output_folder): 
        os.mkdir(output_folder)  
     convfile=open(output_folder+'conv.ascii',"w")
     logfile=open(output_folder+'log.ascii',"w")
+    swarmgsfile=open(output_folder+'swarm_gs.ascii',"w")
     histfile=rootfolder+'Hist-T-'+str(int(tempdegC))+'-Sr-'+str(-int(np.log10(background_sr)))+'-Kinetics-'+str(egs)+'-PercMat2-'+str(int(permat2))
 
     print('  |results in:'+output_folder)
@@ -128,6 +130,13 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
             counter += 1
         #end for
     #end for
+
+    xc=np.empty(nel,dtype=np.float64)  # x coordinates
+    yc=np.empty(nel,dtype=np.float64)  # y coordinates
+
+    for iel in range(0,nel): 
+        xc[iel]=0.5*(xV[iconV[0,iel]]+xV[iconV[2,iel]])
+        yc[iel]=0.5*(yV[iconV[0,iel]]+yV[iconV[2,iel]])
     
     logfile.write("velocity grid points: %.3f s \n" % (time.time() - start))
     
@@ -271,6 +280,7 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
     swarm_sr_gbs=np.zeros(nmarker,dtype=np.float64)             # strain rate 
     swarm_sr_lowT=np.zeros(nmarker,dtype=np.float64)            # strain rate 
     swarm_dinf=np.zeros(nmarker,dtype=np.float64)               # d_inf
+    swarm_tauNR=np.zeros(nmarker,dtype=np.float64)              # 
     
     counter=0
     for iel in range(0,nel):
@@ -305,6 +315,7 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
     for im in range (0,nmarker):
         swarm_mat[im]=1
         swarm_gs[im]=random.gauss(background_gs,0.1*background_gs)  # initial grain size 
+        #swarm_gs[im]=background_gs
         xxi=swarm_x[im]-Lx/2
         yyi=swarm_y[im]-Ly/2
         if xxi**2/radius**2+yyi**2/radius**2<1: swarm_mat[im]=2
@@ -409,7 +420,7 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
                 swarm_eyy[im]=sum(NNNV[0:mV]*eyy[iconV[0:mV,iel]])
                 swarm_exy[im]=sum(NNNV[0:mV]*exy[iconV[0:mV,iel]])
                 swarm_ee[im]=np.sqrt(0.5*(swarm_exx[im]**2+swarm_eyy[im]**2+2*swarm_exy[im]**2) ) 
-                swarm_eta[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
+                swarm_eta[im],swarm_tauNR[im],swarm_sr_dis[im],swarm_sr_diff[im],swarm_sr_gbs[im],swarm_sr_lowT[im]\
                 =viscosity(swarm_ee[im],background_T,swarm_mat[im],swarm_gs[im])
     
                 if abs(avrg)==1 : # arithmetic
@@ -768,7 +779,12 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
             #assign pressure
             #NNNP=NNP(swarm_r[im],swarm_s[im])
             #swarm_p_dyn[im]=NNNP.dot(p[iconP[0:mP,iel]])
+            if swarm_mat[im]<3: swarm_gs[im]=gs_evolution(swarm_gs[im],swarm_ee[im],egs,background_T,dt)
         #end for
+
+
+        swarmgsfile.write("%f %e %e %e \n" %(istep+iter/200,min(swarm_gs),max(swarm_gs),np.mean(swarm_gs)))
+        swarmgsfile.flush()
 
         swarm_total_strainxx[:]+=swarm_exx[:]*dt
         swarm_total_strainyy[:]+=swarm_eyy[:]*dt
@@ -836,6 +852,17 @@ def stonerheo(background_sr,tempdegC,nely,egs,nmarker_per_dim,gamma,radius,Lx,Ly
     
         #if istep==0 or istep==nstep-1 or total_time>tfinal:
         if True:
+
+
+            np.savetxt(output_folder+'swarm_gs_tau_{:04d}.ascii'.format(istep),\
+                       np.array([swarm_gs,swarm_tauNR]).T)
+            np.savetxt(output_folder+'swarm_gs_tau_mid{:04d}.ascii'.format(istep),\
+                       np.array([swarm_gs[swarm_mat==2],swarm_tauNR[swarm_mat==2]]).T)
+            np.savetxt(output_folder+'swarm_x_y_eta_{:04d}.ascii'.format(istep),\
+                       np.array([swarm_x,swarm_y,swarm_eta]).T)
+            np.savetxt(output_folder+'mesh_x_y_eta_{:04d}.ascii'.format(istep),\
+                       np.array([xc,yc,eta_elemental]).T)
+
         
             filename = output_folder+'solution_{:04d}.vtu'.format(istep)
             vtufile=open(filename,"w")

@@ -52,25 +52,25 @@ def viscosity(ee,T,imat,grainsize):
 
         # NewtonRaphson Loop
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.newton.html
-        taunr = optimize.newton(f,sig,args=(sr,gs,T),tol=1e-3, maxiter=100,disp=True)
+        tauNR = optimize.newton(f,sig,args=(sr,gs,T),tol=1e-3, maxiter=100,disp=True)
 
-        etaeff=taunr*1e6/2/sr #stress is in MPa
+        etaeff=tauNR*1e6/2/sr #stress is in MPa
         
-        computed_sr=compute_sr(taunr,sr,gs,T) # returns: sr_dis,sr_diff,sr_gbs,sr_lowT
+        computed_sr=compute_sr(tauNR,sr,gs,T) # returns: sr_dis,sr_diff,sr_gbs,sr_lowT
 
         #viscosity cutoffs
         etaeff=min(etaeff,1e26)
         etaeff=max(etaeff,1e18)
 
-        etaeff=1e21
+        #etaeff=1e23
 
-        return etaeff,computed_sr[0],computed_sr[1],computed_sr[2],computed_sr[3] 
+        return etaeff,tauNR,computed_sr[0],computed_sr[1],computed_sr[2],computed_sr[3] 
 
 ###################################################################################################
 
-def gs_evolution(gs,sr,egs):
+def gs_evolution(gs,sr,egs,T,dt):
     dinf,dummy=compute_dinf(sr,T)
-    gs-=sr/egs*(gs-dinf) 
+    gs-=sr/egs*(gs-dinf)*dt 
     return gs
 
 ###################################################################################################

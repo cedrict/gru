@@ -29,7 +29,6 @@
 \section{Mass and momentum conservation equations}
 
 we start from the mass and momentum conservation equations.
-Since our domain is very small gravitational forces are neglected.
 
 \begin{eqnarray}
 \vec\nabla \cdot \bm \sigma + \rho \vec{g} &=& \vec{0} \\
@@ -164,11 +163,9 @@ the following linear system
 \right)
 \]
 where $\vec{\cal V}$ is the vector containing all velocity degrees of 
-freedom (size { NfemV}={NV}*{ ndofV})
+freedom ({ NfemV}={NV}*{ ndofV})
 and $\vec{\cal P}$ is the vector containing all pressure degrees of freedom 
-(size { NfemP}={ NP}*{ ndofP}).
-
-
+({ NfemP}={ NP}*{ ndofP}).
 
 After the FE matrix has been built, the linear system is solved, and 
 we have obtained a new velocity and pressure field.
@@ -253,7 +250,7 @@ Note that the first 3 equations above can be re-written:
 \tau &=& \left(\frac{\dot{\varepsilon}_{dif}}{A_{dif}} \right)^{1/n_{dif}} \exp\left(\frac{Q_{dsl}}{n_{dif}RT} \right) d^{m_{dif}/n_{dif}} \\
 \tau &=& \left(\frac{\dot{\varepsilon}_{gbs}}{A_{gbs}} \right)^{1/n_{gbs}} \exp\left(\frac{Q_{gbs}}{n_{gbs}RT} \right) d^{m_{gbs}/n_{gbs}} 
 \end{eqnarray}
-
+These equations are used in the \lstinline{viscosity} function. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

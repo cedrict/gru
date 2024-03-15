@@ -16,12 +16,12 @@ Ly=1*cm         # vertical extent of the domain
 
 sr=1e-15 # background strain rate
 
-nely = 12  # number of elements in horizontal direction
+nely = 12  # number of elements in horizontal direction, pref multiple of 6
     
 nmarker_per_dim=5
 
-Tmin=600
-Tmax=700
+Tmin=700
+Tmax=710
 dtemp=50  
 temp=np.arange(Tmin,Tmax,dtemp)
     
@@ -29,7 +29,7 @@ radius=Lx/8  # for mat 2 (mean value in a small circle)
 
 gamma=0.2 #total deformation
     
-CFL_nb=0.125
+CFL_nb=0.1
 
 background_gs=1000 # initial grain size in microns
 
