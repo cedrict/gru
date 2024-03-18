@@ -18,7 +18,7 @@ sr=1e-15 # background strain rate
 
 nely = 12  # number of elements in horizontal direction, pref multiple of 6
     
-nmarker_per_dim=5
+nmarker_per_dim=4
 
 Tmin=700
 Tmax=710
@@ -27,9 +27,9 @@ temp=np.arange(Tmin,Tmax,dtemp)
     
 radius=Lx/8  # for mat 2 (mean value in a small circle)
 
-gamma=0.2 #total deformation
+gamma=2 #total deformation
     
-CFL_nb=0.1
+CFL_nb=0.25
 
 background_gs=1000 # initial grain size in microns
 

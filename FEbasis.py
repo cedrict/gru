@@ -1,4 +1,5 @@
 import numpy as np
+import numba
 
 ###################################################################################################
 #   Vspace=Q2     Pspace=Q1       
@@ -14,7 +15,8 @@ import numpy as np
 
 rVnodes=[-1,+1,+1,-1, 0,+1, 0,-1,0]
 sVnodes=[-1,-1,+1,+1,-1,0,+1,0,0]
-    
+
+@numba.njit    
 def NNV(rq,sq):
     N0= 0.5*rq*(rq-1.) * 0.5*sq*(sq-1.)
     N1= 0.5*rq*(rq+1.) * 0.5*sq*(sq-1.)
@@ -27,6 +29,7 @@ def NNV(rq,sq):
     N8=     (1.-rq**2) *     (1.-sq**2)
     return np.array([N0,N1,N2,N3,N4,N5,N6,N7,N8],dtype=np.float64)
     
+@numba.njit    
 def dNNVdr(rq,sq):
     dNdr0= 0.5*(2.*rq-1.) * 0.5*sq*(sq-1)
     dNdr1= 0.5*(2.*rq+1.) * 0.5*sq*(sq-1)
@@ -39,6 +42,7 @@ def dNNVdr(rq,sq):
     dNdr8=       (-2.*rq) *    (1.-sq**2)
     return np.array([dNdr0,dNdr1,dNdr2,dNdr3,dNdr4,dNdr5,dNdr6,dNdr7,dNdr8],dtype=np.float64)
     
+@numba.njit    
 def dNNVds(rq,sq):
     dNds0= 0.5*rq*(rq-1.) * 0.5*(2.*sq-1.)
     dNds1= 0.5*rq*(rq+1.) * 0.5*(2.*sq-1.)
@@ -51,6 +55,7 @@ def dNNVds(rq,sq):
     dNds8=     (1.-rq**2) *       (-2.*sq)
     return np.array([dNds0,dNds1,dNds2,dNds3,dNds4,dNds5,dNds6,dNds7,dNds8],dtype=np.float64)
     
+@numba.njit    
 def NNP(rq,sq):
     N0=0.25*(1-rq)*(1-sq)
     N1=0.25*(1+rq)*(1-sq)

@@ -1,5 +1,6 @@
 import numpy as np
 
+###################################################################################################
 
 def write_history(histfilename,sr,temp,total_time,istep,\
                   swarm_mat,\
@@ -69,5 +70,4 @@ def write_history(histfilename,sr,temp,total_time,istep,\
     
         histfile.close()
 
-
-
+###################################################################################################
